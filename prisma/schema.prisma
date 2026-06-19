@@ -1,0 +1,275 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Auth & Roles ─────────────────────────────────────────────────
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(TEACHER)
+  teacherId String?  @unique
+  teacher   Teacher? @relation(fields: [teacherId], references: [id])
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  auditLogs AuditLog[]
+  notifications Notification[]
+
+  @@map("users")
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  ACCOUNTANT
+  TEACHER
+}
+
+// ─── Reference Data ──────────────────────────────────────────────
+model Shift {
+  id      String  @id @default(uuid())
+  name    String  // Morning, Afternoon, Evening
+  classes Class[]
+
+  @@map("shifts")
+}
+
+model StudyTime {
+  id        String @id @default(uuid())
+  startTime String // "07:00"
+  endTime   String // "08:30"
+
+  @@map("study_times")
+}
+
+// ─── Teachers ────────────────────────────────────────────────────
+model Teacher {
+  id             String   @id @default(uuid())
+  teacherCode    String   @unique
+  fullName       String
+  gender         String
+  phone          String?
+  email          String?
+  address        String?
+  specialization String?
+  salary         Decimal? @db.Decimal(10, 2)
+  isActive       Boolean  @default(true)
+  classes        Class[]
+  user           User?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("teachers")
+}
+
+// ─── Courses ─────────────────────────────────────────────────────
+model Course {
+  id            String   @id @default(uuid())
+  code          String   @unique
+  name          String
+  description   String?
+  durationMonth Int
+  fee           Decimal  @db.Decimal(10, 2)
+  status        Boolean  @default(true)
+  classes       Class[]
+  enrollments   Enrollment[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("courses")
+}
+
+// ─── Classes ─────────────────────────────────────────────────────
+model Class {
+  id          String   @id @default(uuid())
+  classCode   String   @unique
+  className   String
+  courseId    String
+  course      Course   @relation(fields: [courseId], references: [id])
+  teacherId   String?
+  teacher     Teacher? @relation(fields: [teacherId], references: [id])
+  shiftId     String?
+  shift       Shift?   @relation(fields: [shiftId], references: [id])
+  room        String?
+  startDate   DateTime
+  endDate     DateTime
+  maxStudent  Int      @default(30)
+  isActive    Boolean  @default(true)
+  enrollments Enrollment[]
+  attendance  Attendance[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("classes")
+}
+
+// ─── Students ────────────────────────────────────────────────────
+model Student {
+  id           String       @id @default(uuid())
+  studentCode  String       @unique
+  fullName     String
+  gender       String
+  dob          DateTime?
+  phone        String?
+  parentPhone  String?
+  address      String?
+  registerDate DateTime     @default(now())
+  photo        String?
+  isActive     Boolean      @default(true)
+  enrollments  Enrollment[]
+  attendance   Attendance[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@map("students")
+}
+
+// ─── Enrollments ─────────────────────────────────────────────────
+model Enrollment {
+  id          String             @id @default(uuid())
+  studentId   String
+  student     Student            @relation(fields: [studentId], references: [id])
+  courseId    String
+  course      Course             @relation(fields: [courseId], references: [id])
+  classId     String
+  class       Class              @relation(fields: [classId], references: [id])
+  enrollDate  DateTime           @default(now())
+  startDate   DateTime
+  endDate     DateTime
+  totalFee    Decimal            @db.Decimal(10, 2)
+  discount    Decimal            @default(0) @db.Decimal(10, 2)
+  finalFee    Decimal            @db.Decimal(10, 2)
+  paymentType String             @default("FULL") // FULL, INSTALLMENT
+  status      EnrollmentStatus   @default(ACTIVE)
+  invoice     Invoice?
+  progress    EnrollmentProgress?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@map("enrollments")
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  DROPPED
+}
+
+// ─── Invoices ────────────────────────────────────────────────────
+model Invoice {
+  id           String        @id @default(uuid())
+  invoiceNo    String        @unique
+  enrollmentId String        @unique
+  enrollment   Enrollment    @relation(fields: [enrollmentId], references: [id])
+  invoiceDate  DateTime      @default(now())
+  totalFee     Decimal       @db.Decimal(10, 2)
+  discount     Decimal       @default(0) @db.Decimal(10, 2)
+  finalAmount  Decimal       @db.Decimal(10, 2)
+  paidAmount   Decimal       @default(0) @db.Decimal(10, 2)
+  dueAmount    Decimal       @db.Decimal(10, 2)
+  status       InvoiceStatus @default(UNPAID)
+  payments     Payment[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@map("invoices")
+}
+
+enum InvoiceStatus {
+  PAID
+  PARTIAL
+  UNPAID
+}
+
+// ─── Payments ────────────────────────────────────────────────────
+model Payment {
+  id            String   @id @default(uuid())
+  invoiceId     String
+  invoice       Invoice  @relation(fields: [invoiceId], references: [id])
+  paymentDate   DateTime @default(now())
+  amount        Decimal  @db.Decimal(10, 2)
+  paymentMethod String   @default("CASH") // CASH, BANK, QR
+  note          String?
+  createdAt     DateTime @default(now())
+
+  @@map("payments")
+}
+
+// ─── Attendance ──────────────────────────────────────────────────
+model Attendance {
+  id             String           @id @default(uuid())
+  classId        String
+  class          Class            @relation(fields: [classId], references: [id])
+  studentId      String
+  student        Student          @relation(fields: [studentId], references: [id])
+  attendanceDate DateTime         @db.Date
+  status         AttendanceStatus @default(PRESENT)
+  note           String?
+  createdAt      DateTime         @default(now())
+
+  @@unique([classId, studentId, attendanceDate])
+  @@map("attendance")
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+}
+
+// ─── Progress Tracking ───────────────────────────────────────────
+model EnrollmentProgress {
+  enrollmentId  String     @id
+  enrollment    Enrollment @relation(fields: [enrollmentId], references: [id])
+  totalDays     Int        @default(0)
+  attendedDays  Int        @default(0)
+  remainingDays Int        @default(0)
+  updatedAt     DateTime   @updatedAt
+
+  @@map("enrollment_progress")
+}
+
+// ─── Notifications ───────────────────────────────────────────────
+model Notification {
+  id        String   @id @default(uuid())
+  type      String   // DUE_PAYMENT | COURSE_ENDING | CLASS_FULL
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@map("notifications")
+}
+
+// ─── Settings ────────────────────────────────────────────────────
+model Setting {
+  id    String @id @default(uuid())
+  key   String @unique
+  value String
+
+  @@map("settings")
+}
+
+// ─── Audit Logs ──────────────────────────────────────────────────
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String   // CREATE | UPDATE | DELETE
+  table     String
+  recordId  String?
+  oldValue  Json?
+  newValue  Json?
+  createdAt DateTime @default(now())
+
+  @@map("audit_logs")
+}
