@@ -5,12 +5,12 @@
   "framework": "nextjs",
   "regions": ["sin1"],
   "env": {
-    "DATABASE_URL": "ostgresql://neondb_owner:npg_8PUckJ0yLgbW@ep-tiny-night-aonjq7i8-pooler.c-2.ap-southeast-1.aws.neon.tech/schooldb?sslmode=require&channel_binding=require",
+    "DATABASE_URL": "postgresql://neondb_owner:npg_8PUckJ0yLgbW@ep-tiny-night-aonjq7i8-pooler.c-2.ap-southeast-1.aws.neon.tech/schooldb?sslmode=require&channel_binding=require",
     "JWT_SECRET": "school-management-secret-2025-abcdef123456789"
   },
   "build": {
     "env": {
-      "DATABASE_URL": "ostgresql://neondb_owner:npg_8PUckJ0yLgbW@ep-tiny-night-aonjq7i8-pooler.c-2.ap-southeast-1.aws.neon.tech/schooldb?sslmode=require&channel_binding=require",
+      "DATABASE_URL": "postgresql://neondb_owner:npg_8PUckJ0yLgbW@ep-tiny-night-aonjq7i8-pooler.c-2.ap-southeast-1.aws.neon.tech/schooldb?sslmode=require&channel_binding=require",
       "JWT_SECRET": "school-management-secret-2025-abcdef123456789"
     }
   }
